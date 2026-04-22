@@ -1,0 +1,136 @@
+# Pre-requisite: Create the HF_TOKEN secret before applying this file
+# Run: kubectl create secret generic hf-secret --from-literal=HF_TOKEN=$HF_TOKEN
+# OR: kubectl create secret generic hf-secret --from-env-file=.env
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gemma4-31b-hf-cache
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 30Gi
+  storageClassName: standard
+  volumeMode: Filesystem
+---
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: nvidia
+handler: nvidia
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gemma4-31b-vllm
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: gemma4-31b-vllm
+  template:
+    metadata:
+      labels:
+        app: gemma4-31b-vllm
+        model: gemma4-31b-it-nvfp4
+        engine: vllm
+    spec:
+      restartPolicy: Always
+      runtimeClassName: nvidia
+      containers:
+        - name: gemma4-31b-vllm
+          image: vllm/vllm-openai:gemma4-cu130
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          command: ["vllm", "server"]
+          args:
+            [
+              "--model",
+              "nvidia/Gemma-4-31B-IT-NVFP4",
+              "--max-model-len",
+              "262144",
+              "--served-model-name",
+              "gemma",
+              "--enable-auto-tool-choice",
+              "--tool-call-parser",
+              "gemma4",
+              "--reasoning-parser",
+              "gemma4",
+              "--async-scheduling",
+              "--gpu-memory-utilization",
+              "0.75",
+              "--host",
+              "0.0.0.0",
+              "--port",
+              "8000",
+            ]
+          env:
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: "hf-secret"
+                  key: "HF_TOKEN"
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              cpu: 16
+              memory: 128Gi
+            requests:
+              cpu: 8
+              memory: 64Gi
+              nvidia.com/gpu: 1
+          volumeMounts:
+            - name: shm
+              mountPath: /dev/shm
+            - name: hf-cache
+              mountPath: /root/.cache/huggingface
+            - name: localtime
+              mountPath: /etc/localtime
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 180
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 180
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 3
+            successThreshold: 1
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 20Gi
+        - name: hf-cache
+          persistentVolumeClaim:
+            claimName: gemma4-31b-hf-cache
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+            type: File
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gemma4-31b-vllm
+spec:
+  selector:
+    app: gemma4-31b-vllm
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: LoadBalancer
