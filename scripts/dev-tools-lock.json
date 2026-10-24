@@ -1,0 +1,77 @@
+{
+  "gitleaks": {
+    "version": "8.30.1",
+    "arm64": {
+      "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_arm64.tar.gz",
+      "sha256": "e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080",
+      "member": "gitleaks",
+      "binary_sha256": "00e91bbe655bd7c47753e8cfe61cb76ea1a5d7e7702fe161ee40102b46b3823b"
+    },
+    "amd64": {
+      "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz",
+      "sha256": "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb",
+      "member": "gitleaks",
+      "binary_sha256": "88f91962aa2f93ac6ab281d553b9e125f5197bbbce38f9f2437f7299c32e5509"
+    }
+  },
+  "trivy": {
+    "version": "0.76.1",
+    "arm64": {
+      "url": "https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.76.1_Linux-ARM64.tar.gz",
+      "sha256": "e174dff2a6dba5e3ae41f8d0537a6324405bd08132497340304c6b20e0f16a1f",
+      "member": "trivy",
+      "binary_sha256": "b422130ea54e53e142e65c838662e48919ce9c3f23f17d80066b43e70550cb85"
+    },
+    "amd64": {
+      "url": "https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.76.1_Linux-64bit.tar.gz",
+      "sha256": "c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0",
+      "member": "trivy",
+      "binary_sha256": "d1dfca6ae10a1ad4540bb94e64f0510077c47008920a9b554986b39dca573d83"
+    }
+  },
+  "shellcheck": {
+    "version": "0.11.0",
+    "arm64": {
+      "url": "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.aarch64.tar.xz",
+      "sha256": "12b331c1d2db6b9eb13cfca64306b1b157a86eb69db83023e261eaa7e7c14588",
+      "member": "shellcheck-v0.11.0/shellcheck",
+      "binary_sha256": "127f13925eadd52c341bca0ebaf9ab0dbd78c6468f30a8f262a528bf8de47546"
+    },
+    "amd64": {
+      "url": "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz",
+      "sha256": "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198",
+      "member": "shellcheck-v0.11.0/shellcheck",
+      "binary_sha256": "4da528ddb3a4d1b7b24a59d4e16eb2f5fd960f4bd9a3708a15baddbdf1d5a55b"
+    }
+  },
+  "kubeconform": {
+    "version": "0.7.0",
+    "arm64": {
+      "url": "https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-arm64.tar.gz",
+      "sha256": "cc907ccf9e3c34523f0f32b69745265e0a6908ca85b92f41931d4537860eb83c",
+      "member": "kubeconform",
+      "binary_sha256": "c882bd5b5c30e81e59faf103018cbf85198f262ec5386e8bc50d3978e1e3dead"
+    },
+    "amd64": {
+      "url": "https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz",
+      "sha256": "c31518ddd122663b3f3aa874cfe8178cb0988de944f29c74a0b9260920d115d3",
+      "member": "kubeconform",
+      "binary_sha256": "dd5273bdbf08531bf230f4eba8359984b7beec25a679424ff90911a2591b8b0d"
+    }
+  },
+  "helm": {
+    "version": "4.1.3",
+    "arm64": {
+      "url": "https://get.helm.sh/helm-v4.1.3-linux-arm64.tar.gz",
+      "sha256": "5db45e027cc8de4677ec869e5d803fc7631b0bab1c1eb62ac603a62d22359a43",
+      "member": "linux-arm64/helm",
+      "binary_sha256": "ecbc367cf477afedd65f24d3cea4d2f074451c026dd4ce9e2982151641613550"
+    },
+    "amd64": {
+      "url": "https://get.helm.sh/helm-v4.1.3-linux-amd64.tar.gz",
+      "sha256": "02ce9722d541238f81459938b84cf47df2fdf1187493b4bfb2346754d82a4700",
+      "member": "linux-amd64/helm",
+      "binary_sha256": "495480acb8eac352f544fbbc5dcc4fb945508587f9a97cc0150463608f2ef5d1"
+    }
+  }
+}

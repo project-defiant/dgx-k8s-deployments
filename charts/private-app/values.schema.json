@@ -1,0 +1,297 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^@ :]+$"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "repository",
+        "digest"
+      ]
+    },
+    "command": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "args": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "containerPort": {
+      "type": "integer",
+      "minimum": 1024,
+      "maximum": 65535
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requests": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "type": "string",
+              "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+            },
+            "memory": {
+              "type": "string",
+              "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+            }
+          },
+          "required": [
+            "cpu",
+            "memory"
+          ]
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "type": "string",
+              "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+            },
+            "memory": {
+              "type": "string",
+              "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+            }
+          },
+          "required": [
+            "cpu",
+            "memory"
+          ]
+        }
+      },
+      "required": [
+        "requests",
+        "limits"
+      ]
+    },
+    "securityContext": {
+      "type": "object",
+      "required": [
+        "runAsNonRoot",
+        "runAsUser",
+        "runAsGroup",
+        "allowPrivilegeEscalation",
+        "readOnlyRootFilesystem",
+        "capabilities",
+        "seccompProfile"
+      ],
+      "properties": {
+        "runAsNonRoot": {
+          "const": true
+        },
+        "runAsUser": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "runAsGroup": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "allowPrivilegeEscalation": {
+          "const": false
+        },
+        "readOnlyRootFilesystem": {
+          "type": "boolean"
+        },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "drop": {
+              "const": [
+                "ALL"
+              ]
+            }
+          },
+          "required": [
+            "drop"
+          ]
+        },
+        "seccompProfile": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "RuntimeDefault"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "probes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "initialDelaySeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "periodSeconds": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "path",
+        "initialDelaySeconds",
+        "periodSeconds"
+      ]
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mountPath": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "files": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "mountPath"
+      ]
+    },
+    "persistence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "size": {
+          "type": "string",
+          "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+        },
+        "mountPath": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "storageClass": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "enabled",
+        "size",
+        "mountPath",
+        "storageClass"
+      ]
+    },
+    "writableTmp": {
+      "type": "boolean"
+    },
+    "quota": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "hard": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+          }
+        }
+      },
+      "required": [
+        "enabled",
+        "hard"
+      ]
+    },
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "egressBackends": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "namespace",
+              "instance",
+              "port"
+            ],
+            "properties": {
+              "namespace": {
+                "type": "string",
+                "maxLength": 63,
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              },
+              "instance": {
+                "type": "string",
+                "maxLength": 63,
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              },
+              "port": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 65535
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "image",
+    "command",
+    "args",
+    "containerPort",
+    "resources",
+    "securityContext",
+    "probes",
+    "config",
+    "persistence",
+    "writableTmp",
+    "quota",
+    "networkPolicy"
+  ],
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

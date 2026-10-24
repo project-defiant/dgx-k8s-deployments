@@ -1,0 +1,27 @@
+# Managed by TheDefiant platform-service.sh
+[Unit]
+Description=Private docs access on localhost:@PORT@
+Wants=k3s.service spark-docs-credentials.service
+After=k3s.service spark-docs-credentials.service
+# Keep retrying if the initial credential job fails while K3s starts. Missing or
+# expired restricted credentials fail closed; there is no administrator fallback.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=@USER@
+Group=@GROUP@
+ExecStart=/usr/local/bin/k3s kubectl --kubeconfig /var/lib/spark-docs-access/kubeconfig --context spark-platform --cache-dir=/run/spark-docs-access/cache -n docs-@ENV@ port-forward --address 127.0.0.1 --pod-running-timeout=30s service/docs @PORT@:80
+Restart=always
+RestartSec=5
+RuntimeMaxSec=11h
+RuntimeDirectory=spark-docs-access
+RuntimeDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+InaccessiblePaths=/etc/rancher/k3s /etc/spark-docs-access
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ .Release.Name }}
+spec:
+  replicas: 1
+  {{- if .Values.persistence.enabled }}
+  strategy:
+    type: Recreate
+  {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ toJson .Values.config.files | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.securityContext.runAsGroup }}
+        seccompProfile:
+          type: RuntimeDefault
+        {{- if .Values.persistence.enabled }}
+        fsGroup: {{ .Values.securityContext.runAsGroup }}
+        fsGroupChangePolicy: OnRootMismatch
+      {{- end }}
+      containers:
+        - name: app
+          image: {{ printf "%s@%s" .Values.image.repository .Values.image.digest | quote }}
+          imagePullPolicy: IfNotPresent
+          {{- with .Values.command }}
+          command: {{ toJson . }}
+          {{- end }}
+          {{- with .Values.args }}
+          args: {{ toJson . }}
+          {{- end }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.path | quote }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.periodSeconds }}
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: {{ .Values.probes.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.periodSeconds }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- if or .Values.config.files .Values.persistence.enabled .Values.writableTmp }}
+          volumeMounts:
+            {{- if .Values.config.files }}
+            - name: config
+              mountPath: {{ .Values.config.mountPath | quote }}
+              readOnly: true
+            {{- end }}
+            {{- if .Values.persistence.enabled }}
+            - name: data
+              mountPath: {{ .Values.persistence.mountPath | quote }}
+            {{- end }}
+            {{- if .Values.writableTmp }}
+            - name: tmp
+              mountPath: /tmp
+            {{- end }}
+          {{- end }}
+      {{- if or .Values.config.files .Values.persistence.enabled .Values.writableTmp }}
+      volumes:
+        {{- if .Values.config.files }}
+        - name: config
+          configMap:
+            name: {{ .Release.Name }}
+        {{- end }}
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}
+        {{- end }}
+        {{- if .Values.writableTmp }}
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+        {{- end }}
+      {{- end }}

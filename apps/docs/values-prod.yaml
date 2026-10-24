@@ -1,0 +1,10 @@
+# Apply after values.yaml. Namespace/release selection isolates production.
+quota:
+  hard:
+    requests.cpu: "1"
+    requests.memory: 512Mi
+    limits.cpu: "2"
+    limits.memory: 1Gi
+    persistentvolumeclaims: "4"
+    requests.storage: 10Gi
+    pods: "8"

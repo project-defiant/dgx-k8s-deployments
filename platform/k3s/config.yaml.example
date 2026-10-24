@@ -1,0 +1,18 @@
+# Single-node only: API access uses SSH; worker expansion requires a reviewed change.
+node-name: spark-platform
+bind-address: 0.0.0.0
+# Restrict management/overlay ports using k3s.service ExecStartPre firewall.
+https-listen-port: 6443
+write-kubeconfig: /etc/rancher/k3s/spark-platform.yaml
+write-kubeconfig-mode: "0600"
+secrets-encryption: true
+cluster-cidr: 10.84.0.0/16
+service-cidr: 10.85.0.0/16
+cluster-dns: 10.85.0.10
+disable:
+  - traefik
+  - servicelb
+kubelet-arg:
+  - "system-reserved=cpu=1,memory=2Gi"
+  - "kube-reserved=cpu=1,memory=2Gi"
+  - "eviction-hard=memory.available<1Gi,nodefs.available<10%,imagefs.available<10%"
