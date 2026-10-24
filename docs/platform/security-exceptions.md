@@ -44,6 +44,10 @@ claim or permission to enable an untested GPU workload.
   templates, nginx configuration and production overrides, and checks rendered
   command/arguments. Changing executable behavior/configuration requires review.
   HTML link/content changes alone do not silently alter the executable profile.
+- **Configuration review (2026-10-24):** raising only the Forgejo host request
+  body limit to 40 GiB preserves streaming and introduces no Brotli module,
+  decoder or executable change. The exact configuration hash was renewed;
+  image, finding scope and expiry remain unchanged.
 - **Scope:** only full docs-manifest checks with that verified profile can use
   the exception. A standalone image scan, other image/package/version/CVE,
   CRITICAL severity, or expired assessment still fails. The original finding is

@@ -29,7 +29,7 @@ EXPIRES = datetime.date(2026, 11, 23)
 # or invokes a decoder. Raw findings remain in reports; no generic CVE ignore.
 DOCS_BROTLI_IMAGE = 'docker.io/nginxinc/nginx-unprivileged@sha256:4d831b13e3a78d153ba888f43a784a519944cb8f65a0fad07219a42e5db59456'
 DOCS_BROTLI_EXPIRES = datetime.date(2026, 11, 7)
-DOCS_BROTLI_CONFIG = '188f4dac16d22b4e63baee59be369f7cb60e00b7bb640b41dc50aa1465bef15d'
+DOCS_BROTLI_CONFIG = '31ca77ff625f5ada695017c5a1bd2a344586f28ec6114a4667840c65714cefa0'
 DOCS_PROFILE_FILES = {
     'charts/private-app/templates/deployment.yaml': '45ab6f087ee5bef1268cd1c9b4ead4a5db5cadc9bb311cd09a4312a73493075f',
     'charts/private-app/templates/configmap.yaml': 'b53c26a5557facff91e28cfc23aa0865036810509e4d0d35b3fb314300c2d8fd',
