@@ -1,0 +1,11 @@
+{{- if .Values.config.files }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ .Release.Name }}
+data:
+  {{- range $name, $content := .Values.config.files }}
+  {{ $name | quote }}: {{ $content | quote }}
+  {{- end }}
+{{- end }}

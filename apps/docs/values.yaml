@@ -1,0 +1,104 @@
+# nginxinc/nginx-unprivileged:stable-alpine ARM64/v8 manifest, verified 2026-10-23.
+image:
+  repository: docker.io/nginxinc/nginx-unprivileged
+  digest: sha256:4d831b13e3a78d153ba888f43a784a519944cb8f65a0fad07219a42e5db59456
+command: [nginx]
+args: [-g, "daemon off;", -c, /www/nginx.conf]
+writableTmp: true
+quota:
+  enabled: true
+config:
+  files:
+    nginx.conf: |
+      pid /tmp/nginx.pid;
+      error_log /dev/stderr warn;
+      events { worker_connections 128; }
+      http {
+        # Omit query strings, which can contain user-supplied tokens.
+        log_format gateway '$remote_addr $host $request_method $uri $status';
+        access_log /dev/stdout gateway;
+        default_type text/html;
+        server_tokens off;
+        merge_slashes off;
+        resolver 10.85.0.10 valid=30s ipv6=off;
+        client_max_body_size 256m;
+        client_body_buffer_size 128k;
+        client_body_temp_path /tmp/client_body;
+        proxy_temp_path /tmp/proxy;
+        fastcgi_temp_path /tmp/fastcgi;
+        uwsgi_temp_path /tmp/uwsgi;
+        scgi_temp_path /tmp/scgi;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy same-origin always;
+        server {
+          listen 8080 default_server;
+          server_name _;
+          # Reserved for kubelet probes; other unknown-host requests never proxy.
+          location = /healthz { return 200 "ok\n"; }
+          location / { return 404; }
+        }
+        server {
+          listen 8080;
+          server_name docs.spark.test localhost 127.0.0.1;
+          root /www;
+          index index.html;
+          location = /healthz { return 200 "ok\n"; }
+          location / { try_files $uri $uri/ =404; }
+        }
+        server {
+          listen 8080;
+          server_name git.spark.test;
+          location / {
+            # Runtime DNS permits docs to start before Forgejo exists.
+            set $forgejo http://forgejo.forgejo.svc.cluster.local:3000;
+            proxy_pass $forgejo$request_uri;
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
+            proxy_set_header Host $http_host;
+            proxy_set_header X-Forwarded-Host $http_host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Port 8088;
+            proxy_set_header X-Forwarded-Prefix "";
+            proxy_set_header Forwarded "";
+            proxy_set_header X-Forwarded-For $remote_addr;
+            proxy_set_header X-Real-IP $remote_addr;
+            # Preserve ordinary Authorization for Git HTTP; never assert identity.
+            proxy_set_header X-WEBAUTH-USER "";
+            proxy_set_header X-WEBAUTH-EMAIL "";
+            proxy_set_header X-WEBAUTH-FULLNAME "";
+            proxy_set_header Remote-User "";
+            proxy_request_buffering off;
+            proxy_buffering off;
+            proxy_connect_timeout 10s;
+            proxy_read_timeout 300s;
+            proxy_send_timeout 300s;
+            proxy_redirect off;
+          }
+        }
+      }
+    index.html: |
+      <!doctype html>
+      <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>TheDefiant Home Platform</title>
+      <style>body{font:18px/1.6 system-ui,sans-serif;max-width:52rem;margin:3rem auto;padding:0 1rem;color:#182334}code{background:#eef2f6;padding:.15rem .3rem}h1,h2{line-height:1.2}a{color:#164b96}</style></head>
+      <body><h1>TheDefiant Home Platform</h1><p>Private services on one DGX Spark. Access uses the existing NVIDIA Sync / Tailscale connection.</p>
+      <h2>Deploy</h2><p>From the platform repository, run <code>make deploy-services</code> to deploy Forgejo and the shared docs gateway. Use <code>make deploy-docs</code> to refresh only this page.</p>
+      <h2>Access</h2><p>The systemd forwarder keeps the gateway on the Spark's localhost port 8088. Use NVIDIA Sync to map that port to your Mac. <code>make access</code> is a manual alternative when the service is stopped.</p>
+      <h2>Private service links</h2><p>Use these gateway addresses after adding the Mac hostname entries below.</p>
+      <ul><li><a href="http://docs.spark.test:8088/">Platform docs</a></li><li><a href="http://git.spark.test:8088/">Forgejo Git service</a></li></ul>
+      <p>On your first Forgejo visit, complete its private installation wizard and create your administrator account. Keep the prefilled SQLite settings and external URL. No default administrator password is stored in this repository.</p>
+      <p>Keep one NVIDIA Sync mapping: Mac port <code>8088</code> to Spark port <code>8088</code>. Add these lines to <code>/etc/hosts</code> on your Mac:</p>
+      <pre>127.0.0.1 docs.spark.test
+      127.0.0.1 git.spark.test</pre>
+      <p>Both hostnames point to your Mac's forwarded port. The gateway uses the requested hostname to route to each service. <a href="http://localhost:8088/">localhost:8088</a> also serves docs.</p>
+      <h2>Recovery</h2><p>Reapply the Git-managed chart and site. Restore application volumes separately from encrypted off-machine backups. Cluster recovery additionally needs its datastore, server token and host configuration.</p>
+      <h2>Service roadmap</h2><p>Forgejo Git hosting is available. Its SSH server, package registry and Actions are disabled initially.</p><ul><li>Container registry and CI</li><li>Databases and object storage</li><li>Model serving and local agents</li><li>Obsidian Git backups and encrypted off-machine recovery</li></ul>
+      <p>Acceptable downtime; recovery takes priority over high availability. The NanoPi is future supporting capacity and the workstation remains optional.</p></body></html>
+networkPolicy:
+  enabled: true
+  egressBackends:
+    - namespace: forgejo
+      instance: forgejo
+      port: 3000
+probes:
+  path: /healthz

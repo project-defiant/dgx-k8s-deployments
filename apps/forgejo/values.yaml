@@ -1,0 +1,8 @@
+# Local patched Forgejo LTS build. No deployable digest is committed.
+# Apply the generated .dev-tools/forgejo/<arch>/values.yaml overlay after this file.
+image:
+  repository: local.thedefiant/forgejo
+  digest: ""
+  pullPolicy: Never
+rootURL: http://git.spark.test:8088/
+trustedProxyCIDR: 10.84.0.0/16

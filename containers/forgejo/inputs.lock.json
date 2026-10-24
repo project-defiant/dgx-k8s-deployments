@@ -1,0 +1,23 @@
+{
+  "forgejo_version": "15.0.10",
+  "go_version": "1.26.10",
+  "repository": "local.thedefiant/forgejo",
+  "source": {
+    "url": "https://codeberg.org/forgejo/forgejo/releases/download/v15.0.10/forgejo-src-15.0.10.tar.gz",
+    "sha256": "ec32a9fc4dd30cd2f132755244aa44152df21579983291453289106056b6be0f"
+  },
+  "runtime_images": {
+    "arm64": "codeberg.org/forgejo/forgejo@sha256:d376628eadcdd24cde051d005ff0da1426fd15a8c5a7ef96c753d00ba49be1fc",
+    "amd64": "codeberg.org/forgejo/forgejo@sha256:2cec77b3181e6e52a4e4d110b2509ef48c0b03f279d520c51bf5731233a8cb18"
+  },
+  "go": {
+    "arm64": {
+      "url": "https://go.dev/dl/go1.26.10.linux-arm64.tar.gz",
+      "sha256": "3f4227ce7b206a513e794f1393adb473a07b46e94d18bd15d1c684bbb7319797"
+    },
+    "amd64": {
+      "url": "https://go.dev/dl/go1.26.10.linux-amd64.tar.gz",
+      "sha256": "ccfe7ae822d2c2f41f4fe7c956199967a4dac22d0ee0d2b2bfdb440aab3b20c5"
+    }
+  }
+}

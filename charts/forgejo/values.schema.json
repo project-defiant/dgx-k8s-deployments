@@ -1,0 +1,107 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "image",
+    "rootURL",
+    "storageClass",
+    "storage",
+    "resources",
+    "trustedProxyCIDR"
+  ],
+  "properties": {
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "digest",
+        "pullPolicy"
+      ],
+      "properties": {
+        "repository": {
+          "const": "local.thedefiant/forgejo"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "pullPolicy": {
+          "const": "Never"
+        }
+      }
+    },
+    "rootURL": {
+      "type": "string",
+      "pattern": "^https?://[^/]+/$"
+    },
+    "storageClass": {
+      "type": "string",
+      "minLength": 1
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "type": "string",
+          "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requests",
+        "limits"
+      ],
+      "properties": {
+        "requests": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cpu",
+            "memory"
+          ],
+          "properties": {
+            "cpu": {
+              "type": "string",
+              "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+            },
+            "memory": {
+              "type": "string",
+              "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+            }
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cpu",
+            "memory"
+          ],
+          "properties": {
+            "cpu": {
+              "type": "string",
+              "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+            },
+            "memory": {
+              "type": "string",
+              "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+            }
+          }
+        }
+      }
+    },
+    "trustedProxyCIDR": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+/[0-9]+$"
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

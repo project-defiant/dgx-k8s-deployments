@@ -1,0 +1,16 @@
+image:
+  repository: local.thedefiant/forgejo
+  digest: ""
+  pullPolicy: Never
+trustedProxyCIDR: 10.84.0.0/16
+rootURL: http://git.spark.test:8088/
+storageClass: local-path
+storage:
+  data: 20Gi
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi

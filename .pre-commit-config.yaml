@@ -1,0 +1,12 @@
+# Tools are provisioned by make dev. CI independently repeats the full gate.
+minimum_pre_commit_version: '3.5.0'
+repos:
+  - repo: local
+    hooks:
+      - id: platform-security
+        name: staged secrets and platform static security checks
+        entry: .venv/bin/python scripts/checks.py staged
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

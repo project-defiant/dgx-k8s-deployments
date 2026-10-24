@@ -1,6 +1,6 @@
 # Pre-requisite: Create the HF_TOKEN secret before applying this file
-# Run: kubectl create secret generic hf-secret --from-literal=HF_TOKEN=$HF_TOKEN
-# OR: kubectl create secret generic hf-secret --from-env-file=.env
+# Use the protected stdin workflow: make deploy-vllm--gemma-4-31b
+# Never place token values in command arguments or committed files.
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -39,12 +39,23 @@ spec:
         model: gemma4-31b-it-nvfp4
         engine: vllm
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       restartPolicy: Always
       runtimeClassName: nvidia
       containers:
         - name: gemma4-31b-vllm
-          image: vllm/vllm-openai:gemma4-cu130
-          imagePullPolicy: Always
+          # vllm/vllm-openai:gemma4-cu130 ARM64 manifest verified 2026-10-23.
+          image: docker.io/vllm/vllm-openai@sha256:2970dd3c8fd00bccbc663345f9b4d87b35c491f4b13a2a4cdef60fe5c015f6e2
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            # Root and writable rootfs remain unverified legacy GPU-image exceptions.
+            # Validate cache/runtime paths before enforcing non-root/read-only.
           ports:
             - containerPort: 8000
           args:
@@ -87,9 +98,6 @@ spec:
               mountPath: /dev/shm
             - name: hf-cache
               mountPath: /root/.cache/huggingface
-            - name: localtime
-              mountPath: /etc/localtime
-              readOnly: true
           livenessProbe:
             httpGet:
               path: /health
@@ -115,10 +123,6 @@ spec:
         - name: hf-cache
           persistentVolumeClaim:
             claimName: gemma4-31b-hf-cache
-        - name: localtime
-          hostPath:
-            path: /etc/localtime
-            type: File
 ---
 apiVersion: v1
 kind: Service
@@ -131,4 +135,4 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 8000
-  type: LoadBalancer
+  type: ClusterIP

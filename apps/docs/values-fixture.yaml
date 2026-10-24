@@ -1,0 +1,25 @@
+# Apply after values.yaml for a separate disposable storage fixture release.
+# Serve files from the PVC; initialize fixture files with kubectl exec.
+containerPort: 8081
+config:
+  files:
+    nginx.conf: |
+      pid /tmp/nginx.pid;
+      error_log /dev/stderr warn;
+      events { worker_connections 128; }
+      http {
+        access_log /dev/stdout;
+        default_type text/plain;
+        client_body_temp_path /tmp/client_body;
+        proxy_temp_path /tmp/proxy;
+        fastcgi_temp_path /tmp/fastcgi;
+        uwsgi_temp_path /tmp/uwsgi;
+        scgi_temp_path /tmp/scgi;
+        server { listen 8081; root /data; }
+      }
+probes:
+  path: /fixture.txt
+persistence:
+  enabled: true
+quota:
+  enabled: false
