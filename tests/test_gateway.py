@@ -77,6 +77,14 @@ class GatewayContract(unittest.TestCase):
         self.assertNotIn('$proxy_add_x_forwarded_for', config)
         self.assertNotIn('proxy_set_header Authorization', config)
 
+    def test_large_git_uploads_have_a_bounded_host_specific_limit(self):
+        default, docs, forgejo = servers(nginx_config())
+        self.assertIn('client_max_body_size 40g;', forgejo)
+        self.assertNotIn('client_max_body_size 40g;', default + docs)
+        self.assertIn('client_max_body_size 256m;', nginx_config())
+        self.assertIn('proxy_request_buffering off;', forgejo)
+        self.assertIn('proxy_http_version 1.1;', forgejo)
+
     def test_backend_egress_requires_both_namespace_and_pod_and_port(self):
         result = render(template='networkpolicy')
         self.assertEqual(result.returncode, 0, result.stderr)

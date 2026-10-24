@@ -48,6 +48,8 @@ config:
         server {
           listen 8080;
           server_name git.spark.test;
+          # Allow large Git packs without buffering the upload to local tmp storage.
+          client_max_body_size 40g;
           location / {
             # Runtime DNS permits docs to start before Forgejo exists.
             set $forgejo http://forgejo.forgejo.svc.cluster.local:3000;

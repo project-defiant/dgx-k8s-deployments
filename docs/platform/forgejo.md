@@ -62,6 +62,19 @@ Git over HTTP is enabled after setup. Git SSH, package/OCI registry, Actions and
 outbound migrations/webhooks/mail are initially disabled. Those need separate
 authentication, TLS and outbound-network designs before enabling.
 
+## Large Git pushes
+
+The private Git hostname accepts HTTP request bodies up to 40 GiB per push;
+this is a transfer limit, separate from total repository storage. Docs retain
+their 256 MiB limit. The gateway streams uploads with HTTP/1.1 and request
+buffering disabled, so Git packs do not need to fit in its temporary volume.
+
+An HTTP 413 means a request exceeded the gateway limit. After deploying a fix,
+retry the original `git push`; increasing client `http.postBuffer` does not fix
+an enforced server request limit. A trailing `Everything up-to-date` after an RPC
+failure does not prove success: compare `git rev-parse HEAD` with
+`git ls-remote <remote> refs/heads/<branch>` for the branch being pushed.
+
 ## Rollback and data recovery
 
 Record `helm ... history docs -n docs-dev` before gateway updates. Rolling back the
