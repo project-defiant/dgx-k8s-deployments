@@ -3,8 +3,8 @@
 Scanner warnings are not globally suppressed. Detailed reports remain private
 under `.dev-tools/reports`; the gate rejects unapproved HIGH/CRITICAL findings
 and every detected secret. Lower-severity policy warnings remain visible for
-review. The docs image has only the narrowly scoped, expiring Brotli exception
-documented below; Forgejo has no image vulnerability exception.
+review. The current docs and Forgejo images require no image vulnerability
+exceptions. The old docs-image assessment is retained below for review.
 
 ## Legacy writable GPU container
 
@@ -32,6 +32,13 @@ claim or permission to enable an untested GPU workload.
 
 ## Docs-only Brotli non-reachability assessment
 
+**Historical image assessment:** the current gateway uses the official
+`stable-alpine-slim` ARM64 image pinned at
+`sha256:fe21747ebdea229a1dd6415362bf3ad626b70ec36ccffc19a9a3eb7af54a4f9e`.
+Its scan passes without this exception. The old full image also acquired
+CVE-2026-92392 in curl/libcurl; those findings are not waived. The narrow old-image
+assessment remains recorded for review and never covers the new image.
+
 - **Finding:** CVE-2026-111497, `brotli-libs` version `1.2.0-r1`, HIGH only.
 - **Image:** only `docker.io/nginxinc/nginx-unprivileged@sha256:4d831b13e3a78d153ba888f43a784a519944cb8f65a0fad07219a42e5db59456`.
 - **Owner:** repository maintainer; assessed 2026-10-24; expires **2026-11-07**.
@@ -48,6 +55,14 @@ claim or permission to enable an untested GPU workload.
   body limit to 40 GiB preserves streaming and introduces no Brotli module,
   decoder or executable change. The exact configuration hash was renewed;
   image, finding scope and expiry remain unchanged.
+- **Gateway review (2026-10-25):** the Ollama hostname uses a fixed private
+  upstream, forwards bytes with buffering disabled and introduces no Brotli
+  module/decoder. Only the configuration hash was renewed; the exact image,
+  finding scope and expiry remain unchanged.
+- **Local-client review (2026-10-25):** the `/ollama/` prefix uses a built-in
+  URI map to the same fixed Ollama upstream. It preserves raw paths/queries and
+  streaming, without decompression or executable changes. The configuration hash
+  was renewed; image, finding scope and expiry remain unchanged.
 - **Scope:** only full docs-manifest checks with that verified profile can use
   the exception. A standalone image scan, other image/package/version/CVE,
   CRITICAL severity, or expired assessment still fails. The original finding is

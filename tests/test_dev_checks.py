@@ -108,10 +108,12 @@ class ScannerPolicyTests(unittest.TestCase):
             def fake_run(name, argv, output=None):
                 calls.append(argv)
                 if output:
-                    output.write_text(f'    image: {ref}\n')
+                    selected = 'docker.io/ollama/ollama@sha256:' + 'c' * 64 if '--show-only' in argv else ref
+                    output.write_text(f'    image: {selected}\n')
             with patch.object(checks, 'REPORTS', Path(temporary)), patch.object(checks, 'tool', side_effect=lambda name: name), patch.object(checks, 'run', side_effect=fake_run), patch.object(checks, 'misconfig'), patch.object(checks, 'forgejo_record'), patch.object(checks, 'image') as scan:
                 checks.manifests()
-                scan.assert_called_once_with(ref)
+                self.assertEqual({call.args[0] for call in scan.call_args_list}, {ref, 'docker.io/ollama/ollama@sha256:' + 'c' * 64})
+                self.assertEqual(scan.call_count, 2)
             prod = [args for args in calls if 'apps/docs/values-prod.yaml' in args]
             self.assertEqual(len(prod), 2)
             for args in prod:
@@ -135,6 +137,23 @@ class ScannerPolicyTests(unittest.TestCase):
             with patch.object(checks, 'ROOT', root), patch.object(checks, 'candidate_files', return_value=[Path('link')]):
                 with self.assertRaises(RuntimeError):
                     checks.snapshot(root / 'snapshot')
+
+    def test_copy_image_scans_verified_oci_bytes_and_rejects_other_digest(self):
+        reference = 'local.thedefiant/llm-copy@sha256:' + 'c' * 64
+        with tempfile.TemporaryDirectory() as directory:
+            reports = Path(directory)
+            calls = []
+            def scan(name, args):
+                calls.append(args)
+                (reports / 'image-cccccccccccc.json').write_text(json.dumps({'Results': [{'Class': 'os-pkgs', 'Packages': [{'Name': 'musl'}]}]}))
+            with patch.object(checks, 'REPORTS', reports), patch.object(checks, 'copy_image_record', return_value=(reports, {'imageRef': reference})), patch.object(checks, 'prepare_oci_layout') as prepare, patch.object(checks, 'tool', return_value='trivy'), patch.object(checks, 'run', side_effect=scan):
+                checks.image(reference)
+                prepare.assert_called_once()
+                self.assertIn('--input', calls[0])
+                self.assertNotIn('remote', calls[0])
+                with self.assertRaisesRegex(RuntimeError, 'does not match'):
+                    checks.image('local.thedefiant/llm-copy@sha256:' + 'd' * 64)
+                self.assertEqual(len(calls), 1)
 
     def test_image_scan_without_packages_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:

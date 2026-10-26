@@ -4,6 +4,7 @@ import argparse
 from contextlib import ExitStack
 import datetime
 import hashlib
+import importlib.util
 import json
 import os
 import platform
@@ -29,7 +30,7 @@ EXPIRES = datetime.date(2026, 11, 23)
 # or invokes a decoder. Raw findings remain in reports; no generic CVE ignore.
 DOCS_BROTLI_IMAGE = 'docker.io/nginxinc/nginx-unprivileged@sha256:4d831b13e3a78d153ba888f43a784a519944cb8f65a0fad07219a42e5db59456'
 DOCS_BROTLI_EXPIRES = datetime.date(2026, 11, 7)
-DOCS_BROTLI_CONFIG = '31ca77ff625f5ada695017c5a1bd2a344586f28ec6114a4667840c65714cefa0'
+DOCS_BROTLI_CONFIG = '7439dc6ccc18753eb303afb37e1d0b76c8b8294988292e5d5e39ed7831c25103'
 DOCS_PROFILE_FILES = {
     'charts/private-app/templates/deployment.yaml': '45ab6f087ee5bef1268cd1c9b4ead4a5db5cadc9bb311cd09a4312a73493075f',
     'charts/private-app/templates/configmap.yaml': 'b53c26a5557facff91e28cfc23aa0865036810509e4d0d35b3fb314300c2d8fd',
@@ -228,11 +229,51 @@ def manifests():
             contexts.setdefault(reference, []).append(False)
         run('kubeconform-forgejo', [tool('kubeconform'), '-strict', '-summary', '-kubernetes-version', '1.35.0', str(rendered)])
         misconfig('trivy-forgejo', forgejo, 'forgejo')
+    # Standby images are selected by an explicit reviewed overlay at deployment.
+    # Synthetic digests validate only chart structure, never image safety.
+    with tempfile.TemporaryDirectory(prefix='llm-manifests-', dir=REPORTS) as temporary:
+        directory = Path(temporary)
+        rendered = directory / 'llm-backup.yaml'
+        fixture = ['-f', 'apps/llm-backup/values.yaml',
+                   '--set-string', 'ollama.image.digest=sha256:' + 'a' * 64,
+                   '--set-string', 'webui.image.digest=sha256:' + 'b' * 64]
+        run('helm-lint-llm-backup', [tool('helm'), 'lint', 'charts/llm-backup', *fixture, '--strict'])
+        run('helm-render-llm-backup', [tool('helm'), 'template', 'llm-backup', 'charts/llm-backup',
+                                     '--namespace', 'llm-backup', *fixture], output=rendered)
+        run('kubeconform-llm-backup', [tool('kubeconform'), '-strict', '-summary', '-kubernetes-version', '1.35.0', str(rendered)])
+        misconfig('trivy-llm-backup', directory, 'llm-backup')
+        # Scan the actual approved Ollama image as well as validating the pair's
+        # offline structure. The unapproved WebUI placeholder is never emitted.
+        approved = directory / 'ollama-approved.yaml'
+        run('helm-render-ollama-approved', [tool('helm'), 'template', 'llm-backup', 'charts/llm-backup',
+                                          '--namespace', 'llm-backup', '-f', 'apps/llm-backup/values.yaml',
+                                          '--set-string', 'webui.image.digest=sha256:' + '0' * 64,
+                                          '--show-only', 'templates/ollama.yaml'], output=approved)
+        selected = image_references(approved.read_text())
+        if len(selected) != 1 or not next(iter(selected)).startswith('docker.io/ollama/ollama@sha256:'):
+            raise RuntimeError('Approved Ollama image inventory must contain one official immutable reference')
+        references.update(selected)
+        for reference in selected:
+            contexts.setdefault(reference, []).append(False)
     for reference in sorted(references):
         if contexts.get(reference) and all(contexts[reference]):
             image(reference, docs_profile=True)
         else:
             image(reference)
+
+
+def copy_image_record():
+    spec = importlib.util.spec_from_file_location('verified_copy_image', ROOT / 'scripts/llm-copy-image.py')
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    return helper.verified_record()
+
+
+def gpu_image_module():
+    spec = importlib.util.spec_from_file_location('verified_gpu_image', ROOT / 'scripts/gpu-image.py')
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    return helper
 
 
 def image(reference, docs_profile=False):
@@ -241,6 +282,7 @@ def image(reference, docs_profile=False):
     identifier = reference.split('@sha256:', 1)[1][:12]
     report = REPORTS / f'image-{identifier}.json'
     local = reference.startswith('local.thedefiant/forgejo@')
+    gpu_helper = None
     with ExitStack() as temporary:
         if local:
             record = forgejo_record()
@@ -249,6 +291,21 @@ def image(reference, docs_profile=False):
             # This Trivy version accepts an OCI layout directory, not an OCI tar.
             layout = Path(temporary.enter_context(tempfile.TemporaryDirectory(prefix='oci-scan-', dir=REPORTS)))
             prepare_oci_layout(forgejo_output() / 'image.oci.tar', layout)
+            source = ['--input', str(layout)]
+        elif reference.startswith('local.thedefiant/nvidia-device-plugin@'):
+            gpu_helper = gpu_image_module()
+            output, record = gpu_helper.verified_record()
+            if reference != record['imageRef']:
+                raise RuntimeError('GPU-plugin reference does not match the verified native build')
+            layout = Path(temporary.enter_context(tempfile.TemporaryDirectory(prefix='gpu-oci-scan-', dir=REPORTS)))
+            prepare_oci_layout(output / 'image.oci.tar', layout)
+            source = ['--input', str(layout)]
+        elif reference.startswith('local.thedefiant/llm-copy@'):
+            output, record = copy_image_record()
+            if reference != record['imageRef']:
+                raise RuntimeError('Copy-helper reference does not match the verified native build')
+            layout = Path(temporary.enter_context(tempfile.TemporaryDirectory(prefix='copy-oci-scan-', dir=REPORTS)))
+            prepare_oci_layout(output / 'image.oci.tar', layout)
             source = ['--input', str(layout)]
         else:
             source = ['--image-src', 'remote', reference]
@@ -263,6 +320,8 @@ def image(reference, docs_profile=False):
         print(f'Docs-only Brotli non-reachability exception applied; expires {DOCS_BROTLI_EXPIRES}; raw finding retained')
     if not any(result.get('Packages') for result in results):
         raise RuntimeError('Image scanner returned no package inventory; coverage is insufficient')
+    if gpu_helper is not None:
+        gpu_helper.scan_gate(report)
     if local:
         required = {'app/gitea/gitea', 'usr/local/bin/environment-to-ini'}
         covered = set()

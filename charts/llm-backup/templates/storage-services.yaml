@@ -1,0 +1,31 @@
+{{- range $name := list "ollama" "webui" }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: {{ $.Release.Namespace }}
+  name: {{ $name }}-data
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: {{ $.Values.storageClass | quote }}
+  resources:
+    requests:
+      storage: {{ (index $.Values $name).storage }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ $.Release.Namespace }}
+  name: {{ ternary "ollama" "open-webui" (eq $name "ollama") }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/component: {{ $name }}
+  ports:
+    - name: http
+      port: {{ ternary 11434 8080 (eq $name "ollama") }}
+      targetPort: http
+{{- end }}

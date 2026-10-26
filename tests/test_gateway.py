@@ -45,15 +45,15 @@ class GatewayContract(unittest.TestCase):
 
     def test_host_routing_rejects_unknown_hosts_and_keeps_local_docs(self):
         blocks = servers(nginx_config())
-        self.assertEqual(len(blocks), 3)
-        default, docs, forgejo = blocks
+        self.assertEqual(len(blocks), 4)
+        default, docs, forgejo, ollama = blocks
         self.assertIn('listen 8080 default_server;', default)
         self.assertIn('location / { return 404; }', default)
         self.assertIn('location = /healthz { return 200', default)
         self.assertNotIn('proxy_pass', default)
         self.assertIn('server_name docs.spark.test localhost 127.0.0.1;', docs)
         self.assertIn('root /www;', docs)
-        self.assertNotIn('proxy_pass', docs)
+        self.assertIn('location / { try_files $uri $uri/ =404; }', docs)
         self.assertIn('server_name git.spark.test;', forgejo)
         self.assertIn('set $forgejo http://forgejo.forgejo.svc.cluster.local:3000;', forgejo)
         self.assertIn('proxy_pass $forgejo$request_uri;', forgejo)
@@ -78,9 +78,10 @@ class GatewayContract(unittest.TestCase):
         self.assertNotIn('proxy_set_header Authorization', config)
 
     def test_large_git_uploads_have_a_bounded_host_specific_limit(self):
-        default, docs, forgejo = servers(nginx_config())
+        default, docs, forgejo, ollama = servers(nginx_config())
         self.assertIn('client_max_body_size 40g;', forgejo)
-        self.assertNotIn('client_max_body_size 40g;', default + docs)
+        self.assertNotIn('client_max_body_size 40g;', default)
+        self.assertNotIn('client_max_body_size 40g;', docs.split('location ^~ /ollama/', 1)[0])
         self.assertIn('client_max_body_size 256m;', nginx_config())
         self.assertIn('proxy_request_buffering off;', forgejo)
         self.assertIn('proxy_http_version 1.1;', forgejo)
@@ -101,6 +102,32 @@ class GatewayContract(unittest.TestCase):
         self.assertEqual(without_backend.returncode, 0, without_backend.stderr)
         self.assertNotIn('forgejo', without_backend.stdout)
         self.assertNotIn('port: 3000', without_backend.stdout)
+
+    def test_ollama_api_has_a_constant_private_upstream_and_streaming(self):
+        matches = [block for block in servers(nginx_config()) if 'server_name ollama.spark.test;' in block]
+        self.assertEqual(len(matches), 1)
+        block = matches[0]
+        for directive in ['set $ollama http://ollama.llm-backup.svc.cluster.local:11434;',
+                          'proxy_pass $ollama$request_uri;', 'proxy_http_version 1.1;',
+                          'proxy_request_buffering off;', 'proxy_buffering off;',
+                          'proxy_read_timeout 600s;', 'proxy_set_header Host $http_host;']:
+            self.assertIn(directive, block)
+        self.assertNotIn('proxy_set_header Authorization', block)
+        policy = render(template='networkpolicy').stdout
+        self.assertIn('kubernetes.io/metadata.name: "llm-backup"', policy)
+        self.assertIn('app.kubernetes.io/instance: "llm-backup"', policy)
+        self.assertIn('port: 11434', policy)
+
+    def test_local_cli_prefix_preserves_raw_api_path_and_keeps_docs_root(self):
+        config=nginx_config()
+        docs=next(block for block in servers(config) if 'server_name docs.spark.test localhost 127.0.0.1;' in block)
+        for directive in ['location ^~ /ollama/ {','proxy_pass $ollama$ollama_path;',
+                          'set $ollama http://ollama.llm-backup.svc.cluster.local:11434;',
+                          'proxy_buffering off;', 'proxy_request_buffering off;']:
+            self.assertIn(directive,docs)
+        self.assertIn('map $request_uri $ollama_path {',config)
+        self.assertIn('~^/ollama(/.*)$ $1;',config)
+        self.assertIn('location / { try_files $uri $uri/ =404; }',docs)
 
     def test_malformed_backend_selectors_and_ports_fail_validation(self):
         for setting in ['networkPolicy.egressBackends[0].namespace=',

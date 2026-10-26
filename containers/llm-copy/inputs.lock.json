@@ -1,0 +1,6 @@
+{
+  "repository": "local.thedefiant/llm-copy",
+  "runtime_images": {
+    "arm64": "docker.io/library/python@sha256:4ff19c6091d2441843e881d2101b0507d26624eb1e6844e7ccf1b24df75c42ca"
+  }
+}

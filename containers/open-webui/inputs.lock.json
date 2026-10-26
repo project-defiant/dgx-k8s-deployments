@@ -1,0 +1,38 @@
+{
+  "webui_version": "0.12.3",
+  "repository": "local.thedefiant/open-webui",
+  "upstream_images": {
+    "arm64": "ghcr.io/open-webui/open-webui@sha256:a8c843ac01af5bbe068ac163bd412c81e814f580062342bd62e404d2593226f2"
+  },
+  "python_images": {
+    "arm64": "docker.io/library/python@sha256:a03d3aeb81ae3061d2e23874bf1a8ed418e919dcfe89f2ad4167bd58de639573"
+  },
+  "python_patches": {
+    "PyJWT": "2.14.0",
+    "aiohttp": "3.14.4",
+    "black": "26.10.1",
+    "brotli": "1.2.1",
+    "brotlicffi": "1.2.1.0",
+    "certifi": "2026.10.19",
+    "cryptography": "50.0.0",
+    "filelock": "4.2.1",
+    "fsspec": "2026.6.0",
+    "jaraco.context": "6.1.0",
+    "mcp": "1.28.1",
+    "pillow": "13.0.0",
+    "pyarrow": "23.0.1",
+    "pypdf": "6.21.2",
+    "sentence-transformers": "5.6.0",
+    "transformers": "5.10.0",
+    "unstructured": "0.24.0",
+    "wheel": "0.46.2"
+  },
+  "unresolved_advisories": [
+    "CVE-2026-45829",
+    "CVE-2026-45833",
+    "CVE-2026-45830",
+    "CVE-2026-45831",
+    "CVE-2026-80047"
+  ],
+  "upstream_commit": "91ea4e3421d1d8069f13d4a463fcb5986d94ea60"
+}

@@ -1,0 +1,32 @@
+storageClass: local-path
+ollama:
+  replicas: 0
+  image:
+    repository: docker.io/ollama/ollama
+    digest: ""
+  storage: 400Gi
+  runtimeClass: nvidia
+  internetHTTPS: true
+  resources:
+    requests:
+      cpu: "2"
+      memory: 8Gi
+      nvidia.com/gpu: 1
+    limits:
+      cpu: "8"
+      memory: 96Gi
+      nvidia.com/gpu: 1
+webui:
+  replicas: 0
+  image:
+    repository: ghcr.io/open-webui/open-webui
+    digest: ""
+  storage: 20Gi
+  secretName: llm-backup-webui
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 4Gi

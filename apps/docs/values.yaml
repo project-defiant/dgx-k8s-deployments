@@ -1,7 +1,7 @@
-# nginxinc/nginx-unprivileged:stable-alpine ARM64/v8 manifest, verified 2026-10-23.
+# nginxinc/nginx-unprivileged:stable-alpine-slim ARM64/v8 manifest, verified 2026-10-26.
 image:
   repository: docker.io/nginxinc/nginx-unprivileged
-  digest: sha256:4d831b13e3a78d153ba888f43a784a519944cb8f65a0fad07219a42e5db59456
+  digest: sha256:fe21747ebdea229a1dd6415362bf3ad626b70ec36ccffc19a9a3eb7af54a4f9e
 command: [nginx]
 args: [-g, "daemon off;", -c, /www/nginx.conf]
 writableTmp: true
@@ -23,6 +23,11 @@ config:
         resolver 10.85.0.10 valid=30s ipv6=off;
         client_max_body_size 256m;
         client_body_buffer_size 128k;
+        # Preserve raw escaping and query strings while removing the local CLI prefix.
+        map $request_uri $ollama_path {
+          ~^/ollama(/.*)$ $1;
+          default $request_uri;
+        }
         client_body_temp_path /tmp/client_body;
         proxy_temp_path /tmp/proxy;
         fastcgi_temp_path /tmp/fastcgi;
@@ -43,6 +48,37 @@ config:
           root /www;
           index index.html;
           location = /healthz { return 200 "ok\n"; }
+          location = /ollama {
+            absolute_redirect off;
+            return 308 /ollama/;
+          }
+          location ^~ /ollama/ {
+            client_max_body_size 40g;
+            # Runtime DNS permits docs to start before Ollama exists.
+            set $ollama http://ollama.llm-backup.svc.cluster.local:11434;
+            proxy_pass $ollama$ollama_path;
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
+            proxy_set_header Host $http_host;
+            proxy_set_header X-Forwarded-Host $http_host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Port 8088;
+            proxy_set_header X-Forwarded-Prefix /ollama;
+            proxy_set_header Forwarded "";
+            proxy_set_header X-Forwarded-For $remote_addr;
+            proxy_set_header X-Real-IP $remote_addr;
+            # Preserve ordinary Authorization for the Ollama API; never assert identity.
+            proxy_set_header X-WEBAUTH-USER "";
+            proxy_set_header X-WEBAUTH-EMAIL "";
+            proxy_set_header X-WEBAUTH-FULLNAME "";
+            proxy_set_header Remote-User "";
+            proxy_request_buffering off;
+            proxy_buffering off;
+            proxy_connect_timeout 10s;
+            proxy_read_timeout 600s;
+            proxy_send_timeout 600s;
+            proxy_redirect off;
+          }
           location / { try_files $uri $uri/ =404; }
         }
         server {
@@ -77,6 +113,38 @@ config:
             proxy_redirect off;
           }
         }
+        server {
+          listen 8080;
+          server_name ollama.spark.test;
+          # Stream model blob uploads without spooling large bodies in gateway tmp storage.
+          client_max_body_size 40g;
+          location / {
+            # Runtime DNS permits docs to start before Ollama exists.
+            set $ollama http://ollama.llm-backup.svc.cluster.local:11434;
+            proxy_pass $ollama$request_uri;
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
+            proxy_set_header Host $http_host;
+            proxy_set_header X-Forwarded-Host $http_host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Port 8088;
+            proxy_set_header X-Forwarded-Prefix "";
+            proxy_set_header Forwarded "";
+            proxy_set_header X-Forwarded-For $remote_addr;
+            proxy_set_header X-Real-IP $remote_addr;
+            # Preserve ordinary Authorization for the Ollama API; never assert identity.
+            proxy_set_header X-WEBAUTH-USER "";
+            proxy_set_header X-WEBAUTH-EMAIL "";
+            proxy_set_header X-WEBAUTH-FULLNAME "";
+            proxy_set_header Remote-User "";
+            proxy_request_buffering off;
+            proxy_buffering off;
+            proxy_connect_timeout 10s;
+            proxy_read_timeout 600s;
+            proxy_send_timeout 600s;
+            proxy_redirect off;
+          }
+        }
       }
     index.html: |
       <!doctype html>
@@ -87,18 +155,30 @@ config:
       <h2>Deploy</h2><p>From the platform repository, run <code>make deploy-services</code> to deploy Forgejo and the shared docs gateway. Use <code>make deploy-docs</code> to refresh only this page.</p>
       <h2>Access</h2><p>The systemd forwarder keeps the gateway on the Spark's localhost port 8088. Use NVIDIA Sync to map that port to your Mac. <code>make access</code> is a manual alternative when the service is stopped.</p>
       <h2>Private service links</h2><p>Use these gateway addresses after adding the Mac hostname entries below.</p>
-      <ul><li><a href="http://docs.spark.test:8088/">Platform docs</a></li><li><a href="http://git.spark.test:8088/">Forgejo Git service</a></li></ul>
+      <ul><li><a href="http://docs.spark.test:8088/">Platform docs</a></li><li><a href="http://git.spark.test:8088/">Forgejo Git service</a></li><li><a href="http://ollama.spark.test:8088/api/tags">Ollama API / model inventory</a></li></ul>
       <p>On your first Forgejo visit, complete its private installation wizard and create your administrator account. Keep the prefilled SQLite settings and external URL. No default administrator password is stored in this repository.</p>
       <p>Keep one NVIDIA Sync mapping: Mac port <code>8088</code> to Spark port <code>8088</code>. Add these lines to <code>/etc/hosts</code> on your Mac:</p>
       <pre>127.0.0.1 docs.spark.test
-      127.0.0.1 git.spark.test</pre>
-      <p>Both hostnames point to your Mac's forwarded port. The gateway uses the requested hostname to route to each service. <a href="http://localhost:8088/">localhost:8088</a> also serves docs.</p>
+      127.0.0.1 git.spark.test
+      127.0.0.1 ollama.spark.test</pre>
+      <p>All three hostnames point to your Mac's forwarded port. The gateway uses the requested hostname to route to each service. <a href="http://localhost:8088/">localhost:8088</a> also serves docs.</p>
+      <h2>Local Ollama CLI</h2><p>On the Spark, the native CLI uses the same running K3s service through a DNS-free local API prefix. Set this in the current terminal (new terminals use the configured shell setting):</p><pre>export OLLAMA_HOST=http://127.0.0.1:8088/ollama
+      ollama list
+      ollama run qwen3.8:latest</pre>
+      <p>The local API is also available at <a href="http://localhost:8088/ollama/api/tags">localhost:8088/ollama/api/tags</a>; OpenAI clients can use <code>http://localhost:8088/ollama/v1</code> on either side of the existing tunnel.</p>
+      <h2>Ollama API</h2><p>The running K3s service uses its retained model PVC and GPU. Native API base: <code>http://ollama.spark.test:8088</code>. OpenAI-compatible base: <code>http://ollama.spark.test:8088/v1</code>. This is an API endpoint; the WebUI remains a separate service.</p>
+      <p>No extra port-forward terminal is needed. Without a Mac hosts-file entry, this test uses the existing localhost mapping:</p><pre>curl -H 'Host: ollama.spark.test' http://localhost:8088/api/tags</pre>
+      <p>If you use a dedicated Chrome profile instead of editing hosts, exit that browser instance first, then relaunch it with all three mappings. These mappings apply only to Chrome:</p>
+      <pre>open -na "Google Chrome" --args --user-data-dir="$HOME/Library/Application Support/SparkBrowser" --host-resolver-rules="MAP docs.spark.test 127.0.0.1, MAP git.spark.test 127.0.0.1, MAP ollama.spark.test 127.0.0.1" "http://docs.spark.test:8088/"</pre>
       <h2>Recovery</h2><p>Reapply the Git-managed chart and site. Restore application volumes separately from encrypted off-machine backups. Cluster recovery additionally needs its datastore, server token and host configuration.</p>
       <h2>Service roadmap</h2><p>Forgejo Git hosting is available. Its SSH server, package registry and Actions are disabled initially.</p><ul><li>Container registry and CI</li><li>Databases and object storage</li><li>Model serving and local agents</li><li>Obsidian Git backups and encrypted off-machine recovery</li></ul>
       <p>Acceptable downtime; recovery takes priority over high availability. The NanoPi is future supporting capacity and the workstation remains optional.</p></body></html>
 networkPolicy:
   enabled: true
   egressBackends:
+    - namespace: llm-backup
+      instance: llm-backup
+      port: 11434
     - namespace: forgejo
       instance: forgejo
       port: 3000

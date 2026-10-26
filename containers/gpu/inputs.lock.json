@@ -1,0 +1,17 @@
+{
+  "repository": "local.thedefiant/nvidia-device-plugin",
+  "version": "0.20.1-patched1",
+  "go_version": "1.27.3",
+  "x_net_version": "0.60.0",
+  "runtime_images": {
+    "arm64": "docker.io/ollama/ollama@sha256:064204ed2149cceb1030aaf88949832862c7691bab40f8ce84afd893810305c0"
+  },
+  "source": {
+    "url": "https://codeload.github.com/NVIDIA/k8s-device-plugin/tar.gz/487d7a93894b0f3ad08097169593972eb3ca8206",
+    "sha256": "0b677d550440379b95297e857a376018b805603380bb1fbec86e1f3f5a65266a"
+  },
+  "go": {
+    "url": "https://go.dev/dl/go1.27.3.linux-arm64.tar.gz",
+    "sha256": "a06e99309dbcbdca1a8ccd2282c3ee146e55930886e26b4f1193269587165f49"
+  }
+}

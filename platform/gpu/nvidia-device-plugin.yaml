@@ -1,0 +1,73 @@
+# Reviewed single-Spark subset of NVIDIA's official static device-plugin manifest.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-device-plugin-daemonset
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: nvidia-device-plugin
+spec:
+  selector:
+    matchLabels:
+      name: nvidia-device-plugin-ds
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        name: nvidia-device-plugin-ds
+        app.kubernetes.io/name: nvidia-device-plugin
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: spark-platform
+      runtimeClassName: nvidia
+      priorityClassName: system-node-critical
+      automountServiceAccountToken: false
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        runAsNonRoot: false
+        seccompProfile:
+          type: RuntimeDefault
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+        - key: CriticalAddonsOnly
+          operator: Exists
+      containers:
+        - name: nvidia-device-plugin-ctr
+          # NVIDIA v0.20.1 rebuilt with patched Go/x-net; verified native ARM64 artifact.
+          image: local.thedefiant/nvidia-device-plugin@sha256:daee95b7632c1bd976b3442460ac92819ffd64baeaa7fdbf77d3b8bf141088bd
+          imagePullPolicy: Never
+          env:
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: all
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: compute,utility
+            - name: FAIL_ON_INIT_ERROR
+              value: "true"
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: device-plugin
+              mountPath: /var/lib/kubelet/device-plugins
+              readOnly: false
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+            type: Directory
