@@ -1,0 +1,204 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "storageClass",
+    "ollama",
+    "webui"
+  ],
+  "properties": {
+    "storageClass": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ollama": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "replicas",
+        "image",
+        "storage",
+        "runtimeClass",
+        "internetHTTPS",
+        "resources"
+      ],
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository",
+            "digest"
+          ],
+          "properties": {
+            "repository": {
+              "const": "docker.io/ollama/ollama"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          }
+        },
+        "storage": {
+          "type": "string",
+          "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+        },
+        "runtimeClass": {
+          "const": "nvidia"
+        },
+        "internetHTTPS": {
+          "type": "boolean"
+        },
+        "resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "requests",
+            "limits"
+          ],
+          "properties": {
+            "requests": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "cpu",
+                "memory",
+                "nvidia.com/gpu"
+              ],
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+                },
+                "memory": {
+                  "type": "string",
+                  "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+                },
+                "nvidia.com/gpu": {
+                  "const": 1
+                }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "cpu",
+                "memory",
+                "nvidia.com/gpu"
+              ],
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+                },
+                "memory": {
+                  "type": "string",
+                  "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+                },
+                "nvidia.com/gpu": {
+                  "const": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "webui": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "replicas",
+        "image",
+        "storage",
+        "secretName",
+        "resources"
+      ],
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository",
+            "digest"
+          ],
+          "properties": {
+            "repository": {
+              "const": "ghcr.io/open-webui/open-webui"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          }
+        },
+        "storage": {
+          "type": "string",
+          "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+        },
+        "secretName": {
+          "const": "llm-backup-webui"
+        },
+        "resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "requests",
+            "limits"
+          ],
+          "properties": {
+            "requests": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "cpu",
+                "memory"
+              ],
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+                },
+                "memory": {
+                  "type": "string",
+                  "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+                }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "cpu",
+                "memory"
+              ],
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+                },
+                "memory": {
+                  "type": "string",
+                  "pattern": "^([0-9]+(\\.[0-9]+)?)([EPTGMK]i?|m)?$"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

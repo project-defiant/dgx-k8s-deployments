@@ -1,0 +1,8 @@
+# Standby: scale only through the platform's GPU/capacity checks.
+# Ollama ARM64 is pinned; WebUI remains gated until a reviewed image is supplied.
+ollama:
+  replicas: 0
+  image:
+    digest: sha256:064204ed2149cceb1030aaf88949832862c7691bab40f8ce84afd893810305c0
+webui:
+  replicas: 0

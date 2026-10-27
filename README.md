@@ -4,6 +4,10 @@ Single-machine K3s foundation for private applications on the ARM64 DGX Spark.
 The first app is a small documentation site, deployed with a reusable Helm chart.
 Existing Minikube/vLLM resources remain a separate legacy deployment.
 
+For the cold-standby Ollama/Open WebUI migration, see the
+[LLM backup runbook](docs/platform/llm-backup.md). Model and UI data use separate
+retained PVCs; selected images and GPU readiness must pass the deployment gates.
+
 ## Start here
 
 Before any development update, run **`make dev`**. It installs and verifies the
@@ -53,6 +57,10 @@ disabled initially. No application password is stored in the repository.
 
    Substitute your SSH user and Spark hostname or Tailscale address. Ordinary
    OpenSSH over Tailscale is sufficient; enabling Tailscale SSH is unnecessary.
+
+`make status` lists workloads, GPU DaemonSets, services and storage across all
+K3s namespaces, including Forgejo and Ollama. `make docs-status` retains the
+focused docs view; use `make docs-status ENV=prod` for production docs.
 
 `ENV=prod` selects a separate namespace; both use the same image and content.
 `PLATFORM_KUBECONFIG` overrides the dedicated file `~/.kube/spark-platform.yaml`.

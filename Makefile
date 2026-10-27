@@ -66,11 +66,40 @@ deploy-services: ## Deploy Forgejo, then the shared docs/Forgejo gateway
 	$(MAKE) deploy-forgejo
 	$(MAKE) deploy-docs
 
-status: ## Inspect the new cluster and docs
+.PHONY: docs-status
+docs-status: ## Inspect only docs resources (ENV=dev|prod)
+	./scripts/platform.sh docs-status "$$ENV"
+
+status: ## Inspect workloads, services and storage across all K3s namespaces
 	./scripts/platform.sh status "$$ENV"
 
 access: ## Open a localhost-only docs port-forward
 	./scripts/platform.sh access "$$ENV"
+
+.PHONY: llm-backup-plan llm-backup-render llm-backup-deploy llm-backup-status llm-backup-migrate llm-backup-start llm-backup-stop
+llm-backup-prepare-storage: ## Prepare retained PVCs and isolated copy networking without app workloads
+	.venv/bin/python scripts/llm-backup.py prepare-storage
+
+llm-backup-plan: ## Describe retained model/UI storage and standby migration
+	.venv/bin/python scripts/llm-backup.py plan
+
+llm-backup-render: ## Render standby workloads using the reviewed local image overlay
+	.venv/bin/python scripts/llm-backup.py render
+
+llm-backup-deploy: ## Scan selected images and install zero-replica standby workloads
+	.venv/bin/python scripts/llm-backup.py deploy
+
+llm-backup-status: ## Inspect standby workloads and their retained PVCs
+	.venv/bin/python scripts/llm-backup.py status
+
+llm-backup-migrate: ## Copy existing Ollama/WebUI state into empty PVCs; stops originals
+	.venv/bin/python scripts/llm-backup.py migrate
+
+llm-backup-start: ## Start migrated standby services after GPU and source-state checks
+	.venv/bin/python scripts/llm-backup.py start
+
+llm-backup-stop: ## Stop standby services while retaining all data
+	.venv/bin/python scripts/llm-backup.py stop
 
 .PHONY: docs-service-render docs-service-install docs-service-status docs-service-stop docs-service-logs
 
@@ -114,3 +143,68 @@ destroy-vllm-gemma-4-31b: destroy-vllm--gemma-4-31b
 
 destroy-vllm--gemma-4-31b: ## Delete legacy model resources, including its PVC
 	kubectl --context minikube delete -f gemma4-31b.yaml
+
+.PHONY: build-webui-image gpu-plan gpu-status gpu-deploy llm-backup-prepare-storage
+build-webui-image: ## Build the full patched WebUI candidate; refuses dependency or security failures
+	.venv/bin/python scripts/build-webui.py --build
+
+gpu-plan: ## Describe the reviewed Kubernetes GPU addon
+	.venv/bin/python scripts/platform-gpu.py plan
+
+gpu-status: ## Check device-plugin readiness and one advertised GPU
+	.venv/bin/python scripts/platform-gpu.py status
+
+gpu-deploy: ## Validate and scan the GPU addon before deployment
+	.venv/bin/python scripts/platform-gpu.py deploy
+
+.PHONY: llm-copy-image-build llm-copy-image-import
+llm-copy-image-build: ## Build and scan the minimal migration helper
+	.venv/bin/python scripts/llm-copy-image.py --build
+
+llm-copy-image-import: ## Rescan and import the verified copy helper into K3s (sudo)
+	.venv/bin/python scripts/llm-copy-image.py --import
+
+.PHONY: llm-backup-copy-data
+llm-backup-copy-data: ## Import the verified helper and copy UI/models to empty PVCs; stops originals (interactive sudo)
+	$(MAKE) llm-backup-prepare-storage
+	$(MAKE) llm-copy-image-import
+	.venv/bin/python scripts/llm-backup.py migrate webui
+	.venv/bin/python scripts/llm-backup.py migrate ollama
+	@echo 'Data copied; originals are stopped and retained. Application cutover remains gated.'
+	@echo 'To resume the original services while standby is stopped: sudo systemctl start ollama; docker start open-webui'
+
+.PHONY: gpu-image-build gpu-image-import deploy-ollama start-ollama ollama-access ollama-up
+gpu-image-build: ## Build and scan the patched native NVIDIA device plugin
+	.venv/bin/python scripts/gpu-image.py --build
+
+gpu-image-import: ## Verify, scan and import the patched GPU image into K3s (sudo)
+	.venv/bin/python scripts/gpu-image.py --import
+
+deploy-ollama: ## Prepare only Ollama in K3s using the migrated PVC
+	.venv/bin/python scripts/llm-backup.py deploy-ollama
+
+start-ollama: ## Start Ollama alone and wait for K3s GPU readiness
+	.venv/bin/python scripts/llm-backup.py start-ollama
+
+ollama-access: ## Forward the K3s Ollama API to localhost:11434
+	.venv/bin/python scripts/llm-backup.py access-ollama
+
+ollama-up: ## Import the GPU image (sudo), enable GPU scheduling and start only Ollama
+	$(MAKE) gpu-image-import
+	$(MAKE) gpu-deploy
+	$(MAKE) deploy-ollama
+	sudo systemctl disable --now ollama
+	$(MAKE) start-ollama
+
+.PHONY: stop-ollama
+stop-ollama: ## Stop only the K3s Ollama workload, retaining its PVC
+	.venv/bin/python scripts/llm-backup.py stop-ollama
+
+.PHONY: deploy-ollama-gateway
+deploy-ollama-gateway: ## Route Ollama through the persistent private gateway on port 8088
+	.venv/bin/python scripts/llm-backup.py refresh-network
+	$(MAKE) deploy-docs
+
+.PHONY: ollama-env
+ollama-env: ## Print the local K3s Ollama client setting for the current shell
+	@printf '%s\n' 'export OLLAMA_HOST=http://127.0.0.1:8088/ollama'

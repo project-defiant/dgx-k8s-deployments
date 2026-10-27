@@ -26,7 +26,7 @@ forgejo_values() {
 }
 case "$action" in
   help)
-    echo 'Usage: platform.sh {render|validate|deploy|status|access|rollback|dry-run|forgejo-render|forgejo-validate|forgejo-deploy|forgejo-status} [dev|prod]'
+    echo 'Usage: platform.sh {render|validate|deploy|status|docs-status|access|rollback|dry-run|forgejo-render|forgejo-validate|forgejo-deploy|forgejo-status} [dev|prod]'
     echo 'Set PLATFORM_KUBECONFIG to a dedicated mode-600 kubeconfig; context must be spark-platform.';;
   render) helm template docs "$repo/charts/private-app" -n "$namespace" "${values[@]}";;
   forgejo-render)
@@ -54,6 +54,9 @@ case "$action" in
   status)
     guard
     "${kube[@]}" get nodes
+    "${kube[@]}" get deployments,daemonsets,pods,services,pvc,resourcequota -A;;
+  docs-status)
+    guard
     "${kube[@]}" -n "$namespace" get deployments,pods,services,pvc,resourcequota;;
   access)
     guard

@@ -8,6 +8,7 @@ context is changed. `PLATFORM_KUBECONFIG` can select a protected dedicated file.
 | Validate manifests | `make validate` |
 | CLI/chart checks | `make test` |
 | Deploy development | `make deploy-docs` |
+| Enable Ollama on shared gateway | `make deploy-ollama-gateway` |
 | Deploy production | `make deploy-docs ENV=prod` |
 | Inspect resources | `make status` |
 | Private local listener | `make access` |
@@ -116,3 +117,10 @@ control-plane migration; adding a node does not transfer local PV data. Optional
 workstation jobs must tolerate that machine being off. GPU inference and its
 memory budget are outside this milestone; the old vLLM manifest is not applied
 to the new cluster automatically.
+
+Ollama uses the same persistent gateway as docs and Forgejo:
+`http://ollama.spark.test:8088/api/tags` lists available models, and
+`http://ollama.spark.test:8088/v1` is the OpenAI-compatible API base. The service
+has no web chat UI. Use the existing NVIDIA Sync8088 mapping and add the Ollama
+hostname to the client resolver. The docs page includes a Chrome-only alternative
+for Macs without hosts-file permissions and a curl example using the Host header.
