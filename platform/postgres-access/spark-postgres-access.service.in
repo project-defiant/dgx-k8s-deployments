@@ -1,0 +1,27 @@
+# Managed by TheDefiant postgres-service.sh
+[Unit]
+Description=Private Postgres access on localhost:5432
+Wants=k3s.service spark-postgres-credentials.service
+After=k3s.service spark-postgres-credentials.service
+# Keep retrying if the initial credential job fails while K3s starts. Missing or
+# expired restricted credentials fail closed; there is no administrator fallback.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=@USER@
+Group=@GROUP@
+ExecStart=/usr/local/bin/k3s kubectl --kubeconfig /var/lib/spark-postgres-access/kubeconfig --context spark-platform --cache-dir=/run/spark-postgres-access/cache -n postgres-dev port-forward --address 127.0.0.1 --pod-running-timeout=30s service/postgres 5432:5432
+Restart=always
+RestartSec=5
+RuntimeMaxSec=11h
+RuntimeDirectory=spark-postgres-access
+RuntimeDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+InaccessiblePaths=/etc/rancher/k3s /etc/spark-postgres-access
+
+[Install]
+WantedBy=multi-user.target

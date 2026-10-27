@@ -208,3 +208,48 @@ deploy-ollama-gateway: ## Route Ollama through the persistent private gateway on
 .PHONY: ollama-env
 ollama-env: ## Print the local K3s Ollama client setting for the current shell
 	@printf '%s\n' 'export OLLAMA_HOST=http://127.0.0.1:8088/ollama'
+
+.PHONY: postgres-image-build postgres-image-import deploy-postgres postgres-status postgres-access postgres-connection postgres-password postgres-shell postgres-service-render postgres-service-install postgres-service-status postgres-up
+postgres-image-build: ## Build and scan the patched native PostgreSQL 18 image
+	.venv/bin/python scripts/postgres-image.py --build
+
+postgres-image-import: ## Rescan and import the verified PostgreSQL image into K3s (sudo)
+	.venv/bin/python scripts/postgres-image.py --import
+
+deploy-postgres: ## Deploy the persistent private development PostgreSQL service
+	.venv/bin/python scripts/postgres.py deploy
+
+postgres-status: ## Inspect the development database and retained storage
+	.venv/bin/python scripts/postgres.py status
+
+postgres-access: ## Forward PostgreSQL to localhost:5432 until interrupted
+	.venv/bin/python scripts/postgres.py access
+
+postgres-connection: ## Show connection details and create a private pgpass file
+	.venv/bin/python scripts/postgres.py connection
+
+postgres-password: ## Explicitly display the development-role password
+	.venv/bin/python scripts/postgres.py password
+
+postgres-shell: ## Open psql as the non-superuser dev role inside the database pod
+	.venv/bin/python scripts/postgres.py shell
+
+postgres-service-render: ## Preview scoped boot-time localhost database access
+	bash scripts/postgres-service.sh render "$$(id -un)" "$${PLATFORM_KUBECONFIG:-$$HOME/.kube/spark-platform.yaml}"
+
+postgres-service-install: ## Install restricted localhost:5432 forwarding at boot (sudo)
+	@test -f "$${PLATFORM_KUBECONFIG:-$$HOME/.kube/spark-platform.yaml}"
+	sudo bash scripts/postgres-service.sh install "$$(id -un)" "$${PLATFORM_KUBECONFIG:-$$HOME/.kube/spark-platform.yaml}"
+
+postgres-service-status: ## Inspect the persistent localhost forwarder and token renewal
+	systemctl status spark-postgres-access.service spark-postgres-credentials.timer --no-pager
+
+postgres-up: ## Import image, deploy PostgreSQL, and install boot-time localhost access (sudo)
+	$(MAKE) postgres-image-import
+	$(MAKE) deploy-postgres
+	$(MAKE) postgres-service-install
+	$(MAKE) postgres-connection
+
+.PHONY: verify-postgres-runtime
+verify-postgres-runtime: ## Test PostgreSQL auth and persistence with disposable data
+	.venv/bin/python scripts/verify-postgres-runtime.py

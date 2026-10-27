@@ -98,3 +98,9 @@ the Hugging Face cache. This manifest is not yet migrated or validated for K3s.
 The legacy image is digest-pinned but its GPU runtime, full image CVE inventory,
 and non-root/read-only compatibility are not verified. See the narrowly scoped,
 expiring [security exceptions](docs/platform/security-exceptions.md) before enabling it.
+
+## Development PostgreSQL
+
+See the [PostgreSQL runbook](docs/platform/postgres.md) for `make postgres-up`,
+persistent private localhost:5432 access, password retrieval and development-role
+permissions. Data uses a retained PVC, separate from application and model storage.

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: postgres-dev
+version: 0.1.0
+appVersion: "18"
+description: Private persistent PostgreSQL for local development
+type: application

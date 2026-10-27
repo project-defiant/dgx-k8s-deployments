@@ -255,6 +255,18 @@ def manifests():
         references.update(selected)
         for reference in selected:
             contexts.setdefault(reference, []).append(False)
+    with tempfile.TemporaryDirectory(prefix='postgres-manifests-', dir=REPORTS) as temporary:
+        directory = Path(temporary)
+        rendered = directory / 'postgres.yaml'
+        fixture = ['-f', 'apps/postgres-dev/values.yaml', '--set-string', 'image.digest=sha256:' + 'a' * 64]
+        run('helm-lint-postgres', [tool('helm'), 'lint', 'charts/postgres-dev', *fixture, '--strict'])
+        run('helm-render-postgres', [tool('helm'), 'template', 'postgres-dev', 'charts/postgres-dev',
+                                  '--namespace', 'postgres-dev', *fixture], output=rendered)
+        run('kubeconform-postgres', [tool('kubeconform'), '-strict', '-summary', '-kubernetes-version', '1.35.0', str(rendered)])
+        misconfig('trivy-postgres', directory, 'postgres')
+        rbac = directory / 'forwarder-rbac.yaml'
+        shutil.copyfile(ROOT / 'platform/postgres-access/rbac.yaml', rbac)
+        run('kubeconform-postgres-rbac', [tool('kubeconform'), '-strict', '-summary', '-kubernetes-version', '1.35.0', str(rbac)])
     for reference in sorted(references):
         if contexts.get(reference) and all(contexts[reference]):
             image(reference, docs_profile=True)
@@ -276,6 +288,13 @@ def gpu_image_module():
     return helper
 
 
+def postgres_image_module():
+    spec = importlib.util.spec_from_file_location('verified_postgres_image', ROOT / 'scripts/postgres-image.py')
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    return helper
+
+
 def image(reference, docs_profile=False):
     if not re.fullmatch(r'[^@\s]+@sha256:[0-9a-f]{64}', reference):
         raise RuntimeError('Image checks require a digest-pinned image reference')
@@ -283,6 +302,7 @@ def image(reference, docs_profile=False):
     report = REPORTS / f'image-{identifier}.json'
     local = reference.startswith('local.thedefiant/forgejo@')
     gpu_helper = None
+    postgres_helper = None
     with ExitStack() as temporary:
         if local:
             record = forgejo_record()
@@ -291,6 +311,14 @@ def image(reference, docs_profile=False):
             # This Trivy version accepts an OCI layout directory, not an OCI tar.
             layout = Path(temporary.enter_context(tempfile.TemporaryDirectory(prefix='oci-scan-', dir=REPORTS)))
             prepare_oci_layout(forgejo_output() / 'image.oci.tar', layout)
+            source = ['--input', str(layout)]
+        elif reference.startswith('local.thedefiant/postgres@'):
+            postgres_helper = postgres_image_module()
+            output, record = postgres_helper.verified_record()
+            if reference != record['imageRef']:
+                raise RuntimeError('PostgreSQL reference does not match the verified native build')
+            layout = Path(temporary.enter_context(tempfile.TemporaryDirectory(prefix='postgres-oci-scan-', dir=REPORTS)))
+            prepare_oci_layout(output / 'image.oci.tar', layout)
             source = ['--input', str(layout)]
         elif reference.startswith('local.thedefiant/nvidia-device-plugin@'):
             gpu_helper = gpu_image_module()
@@ -322,6 +350,8 @@ def image(reference, docs_profile=False):
         raise RuntimeError('Image scanner returned no package inventory; coverage is insufficient')
     if gpu_helper is not None:
         gpu_helper.scan_gate(report)
+    if postgres_helper is not None:
+        postgres_helper.scan_gate(report)
     if local:
         required = {'app/gitea/gitea', 'usr/local/bin/environment-to-ini'}
         covered = set()

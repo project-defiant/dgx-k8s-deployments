@@ -1,0 +1,10 @@
+image:
+  repository: local.thedefiant/postgres
+  digest: ""
+  pullPolicy: Never
+majorVersion: 18
+replicas: 1
+port: 5432
+storageClass: local-path
+storage: 20Gi
+secretName: postgres-credentials

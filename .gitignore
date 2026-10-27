@@ -1,8 +1,8 @@
 .omx/
 .worktrees/
 .worktree/
-.venv/
-.dev-tools/
+.venv
+.dev-tools
 .cache/
 .pytest_cache/
 .ruff_cache/

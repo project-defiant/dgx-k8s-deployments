@@ -1,0 +1,8 @@
+{
+  "repository": "local.thedefiant/postgres",
+  "PG_MAJOR": "18",
+  "PG_VERSION": "18.6",
+  "runtime_images": {
+    "arm64": "docker.io/library/postgres@sha256:b1c1673a890fba8fae71d37210b4fd9a0b5cd0df8bb994a6bcc01d9cf8e1670c"
+  }
+}

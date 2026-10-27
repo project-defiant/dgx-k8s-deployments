@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "image",
+    "majorVersion",
+    "replicas",
+    "port",
+    "storageClass",
+    "storage",
+    "secretName"
+  ],
+  "properties": {
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "digest",
+        "pullPolicy"
+      ],
+      "properties": {
+        "repository": {
+          "const": "local.thedefiant/postgres"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "pullPolicy": {
+          "const": "Never"
+        }
+      }
+    },
+    "majorVersion": {
+      "const": 18
+    },
+    "replicas": {
+      "const": 1
+    },
+    "port": {
+      "const": 5432
+    },
+    "storageClass": {
+      "const": "local-path"
+    },
+    "storage": {
+      "const": "20Gi"
+    },
+    "secretName": {
+      "const": "postgres-credentials"
+    }
+  }
+}
