@@ -5,7 +5,7 @@ requires-python = ">=3.12"
 dependencies = []
 
 [dependency-groups]
-dev = ["bandit==1.9.4", "prek==0.5.7", "pip-audit==2.10.1", "PyYAML==6.0.3"]
+dev = ["bandit==1.9.4", "prek==0.5.10", "pip-audit==2.10.1", "PyYAML==6.0.3"]
 
 [tool.bandit]
 exclude_dirs = ["tests", ".venv", ".dev-tools", ".omx", ".git"]
